@@ -80,6 +80,7 @@ export abstract class BaseCanvasBasedPlayer extends BasePlayer {
     protected onFrameDecoded(width: number, height: number, frame: any): void {
         if (!this.receivedFirstFrame) {
             // decoded frame with previous video settings
+            this.dropFrame(frame);
             return;
         }
         let dropped = 0;
