@@ -53,7 +53,9 @@ export class TouchControlMessage extends ControlMessage {
         offset = buffer.writeUInt32BE(this.position.point.y, offset);
         offset = buffer.writeUInt16BE(this.position.screenSize.width, offset);
         offset = buffer.writeUInt16BE(this.position.screenSize.height, offset);
-        offset = buffer.writeUInt16BE(this.pressure * TouchControlMessage.MAX_PRESSURE_VALUE, offset);
+        // iOS WebKit can report Touch.force outside 0..1, which overflows the unsigned short
+        const pressure = Math.min(Math.max(this.pressure, 0), 1) || 0;
+        offset = buffer.writeUInt16BE(Math.round(pressure * TouchControlMessage.MAX_PRESSURE_VALUE), offset);
         buffer.writeUInt32BE(this.buttons, offset);
         return buffer;
     }
