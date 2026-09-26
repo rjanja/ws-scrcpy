@@ -72,8 +72,7 @@ export class WebCodecsPlayer extends BaseCanvasBasedPlayer {
     private decoder: VideoDecoder;
     private buffer: ArrayBuffer | undefined;
     private hadIDR = false;
-    private bufferedSPS = false;
-    private bufferedPPS = false;
+    private timestamp = 0;
 
     constructor(udid: string, displayInfo?: DisplayInfo, name = WebCodecsPlayer.playerFullName) {
         super(udid, displayInfo, name, WebCodecsPlayer.storageKeyPrefix);
@@ -132,14 +131,26 @@ export class WebCodecsPlayer extends BaseCanvasBasedPlayer {
         this.tag.style.transformOrigin = 'top left';
     }
 
+    // A packet can hold several NAL units (e.g. SPS + PPS + IDR in one buffer),
+    // so look at all of them instead of only the first one.
+    private static getNalTypes(data: Uint8Array): number[] {
+        const types: number[] = [];
+        for (let i = 0; i + 3 < data.length; i++) {
+            if (data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 1) {
+                types.push(data[i + 3] & 31);
+                i += 3;
+            }
+        }
+        return types;
+    }
+
     protected decode(data: Uint8Array): void {
-        if (!data || data.length < 4) {
+        if (!data || data.length < 5) {
             return;
         }
-        const type = data[4] & 31;
-        const isIDR = type === NALU.IDR;
+        const types = WebCodecsPlayer.getNalTypes(data);
 
-        if (type === NALU.SPS) {
+        if (types[0] === NALU.SPS) {
             const { codec, width, height } = WebCodecsPlayer.parseSPS(data.subarray(4));
             this.scaleCanvas(width, height);
             const config: VideoDecoderConfig = {
@@ -147,35 +158,28 @@ export class WebCodecsPlayer extends BaseCanvasBasedPlayer {
                 optimizeForLatency: true,
             } as VideoDecoderConfig;
             this.decoder.configure(config);
-            this.bufferedSPS = true;
-            this.addToBuffer(data);
-            this.hadIDR = false;
-            return;
-        } else if (type === NALU.PPS) {
-            this.bufferedPPS = true;
-            this.addToBuffer(data);
-            return;
-        } else if (type === NALU.SEI) {
-            // Workaround for lonely SEI from ws-qvh
-            if (!this.bufferedSPS || !this.bufferedPPS) {
-                return;
-            }
-        }
-        const array = this.addToBuffer(data);
-        this.hadIDR = this.hadIDR || isIDR;
-        if (array && this.decoder.state === 'configured' && this.hadIDR) {
             this.buffer = undefined;
-            this.bufferedPPS = false;
-            this.bufferedSPS = false;
-            this.decoder.decode(
-                new EncodedVideoChunk({
-                    type: 'key',
-                    timestamp: 0,
-                    data: array.buffer,
-                }),
-            );
+            this.hadIDR = false;
+        }
+
+        const array = this.addToBuffer(data);
+        const isIDR = types.includes(NALU.IDR);
+        if (!isIDR && !types.includes(1)) {
+            // SPS / PPS / SEI only: keep them for the next picture
             return;
         }
+        this.buffer = undefined;
+        this.hadIDR = this.hadIDR || isIDR;
+        if (this.decoder.state !== 'configured' || !this.hadIDR) {
+            return;
+        }
+        this.decoder.decode(
+            new EncodedVideoChunk({
+                type: isIDR ? 'key' : 'delta',
+                timestamp: this.timestamp++,
+                data: array,
+            }),
+        );
     }
 
     protected drawDecoded = (): void => {
