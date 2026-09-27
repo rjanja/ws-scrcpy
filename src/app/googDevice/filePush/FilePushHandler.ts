@@ -1,6 +1,7 @@
 import { DragAndDropHandler, DragEventListener } from '../DragAndDropHandler';
 import { FilePushStream, PushResponse } from './FilePushStream';
 import { FilePushResponseStatus } from './FilePushResponseStatus';
+import { stripLocation } from './StripLocation';
 
 type Resolve = (response: PushResponse) => void;
 
@@ -60,8 +61,17 @@ export default class FilePushHandler implements DragEventListener {
         return { reader, result };
     }
 
-    private async pushFile(file: File): Promise<void> {
+    private async pushFile(original: File): Promise<void> {
         const start = Date.now();
+        let file: File;
+        try {
+            file = await stripLocation(original);
+        } catch (error) {
+            const message = `error: "${(error as Error).message}"`;
+            const pushId = FilePushHandler.REQUEST_NEW_PUSH_ID;
+            this.sendUpdate({ pushId, fileName: original.name, message, progress: -1, error: true, finished: true });
+            return;
+        }
         const { name: fileName, size: fileSize } = file;
         if (!this.filePushStream.hasConnection()) {
             this.listeners.forEach((listener) => {
