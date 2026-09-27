@@ -30,6 +30,7 @@ import { ACTION } from '../../../common/Action';
 import { StreamReceiverScrcpy } from './StreamReceiverScrcpy';
 import { ParamsDeviceTracker } from '../../../types/ParamsDeviceTracker';
 import { ScrcpyFilePushStream } from '../filePush/ScrcpyFilePushStream';
+import { StreamReconnector } from './StreamReconnector';
 import { FilePushStream } from '../filePush/FilePushStream';
 /// #if INCLUDE_FILE_LISTING
 import { AdbkitFilePushStream } from '../filePush/AdbkitFilePushStream';
@@ -64,6 +65,7 @@ export class StreamClientScrcpy
     private player?: BasePlayer;
     private filePushHandler?: FilePushHandler;
     private fileInput?: HTMLInputElement;
+    private reconnector?: StreamReconnector;
     /// #if INCLUDE_FILE_LISTING
     private devicePushClient?: DevicePushClient;
     /// #endif
@@ -185,6 +187,7 @@ export class StreamClientScrcpy
     };
 
     public onVideo = (data: ArrayBuffer): void => {
+        this.reconnector?.onData();
         if (!this.player) {
             return;
         }
@@ -308,6 +311,7 @@ export class StreamClientScrcpy
         this.streamReceiver.off('clientsStats', this.onClientsStats);
         this.streamReceiver.off('displayInfo', this.onDisplayInfo);
         this.streamReceiver.off('disconnected', this.onDisconnected);
+        this.reconnector?.onDisconnected();
 
         this.filePushHandler?.release();
         this.filePushHandler = undefined;
@@ -332,6 +336,9 @@ export class StreamClientScrcpy
         }
 
         this.fitToScreen = fitToScreen;
+        if (!this.reconnector) {
+            this.reconnector = new StreamReconnector();
+        }
         if (!player) {
             if (typeof playerName !== 'string') {
                 throw Error('Must provide BasePlayer instance or playerName');
@@ -371,6 +378,8 @@ export class StreamClientScrcpy
             if (parent) {
                 parent.removeChild(moreBox);
             }
+            this.reconnector?.release();
+            this.reconnector = undefined;
             this.streamReceiver.stop();
             if (this.player) {
                 this.player.stop();

@@ -202,3 +202,15 @@ body.stream {
 .control-wrapper > input[type=checkbox]:checked + label > svg {
     fill: var(--svg-checkbox-bg-color);
 }
+
+.reconnect-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: hsla(0, 0%, 0%, 0.6);
+    color: #ffffff;
+    font-size: 1.2rem;
+}
