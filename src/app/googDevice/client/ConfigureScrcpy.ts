@@ -14,6 +14,7 @@ import { DeviceTracker } from './DeviceTracker';
 import { Attribute } from '../../Attribute';
 import { StreamReceiverScrcpy } from './StreamReceiverScrcpy';
 import { ParamsStreamScrcpy } from '../../../types/ParamsStreamScrcpy';
+import { ACTION } from '../../../common/Action';
 import { BaseClient } from '../../client/BaseClient';
 
 interface ConfigureScrcpyEvents {
@@ -615,6 +616,27 @@ export class ConfigureScrcpy extends BaseClient<ParamsStreamScrcpy, ConfigureScr
         }
     };
 
+    private replaceUrlWithStreamLink(fitToScreen: boolean): void {
+        const playerClass = this.getPlayer();
+        if (!playerClass) {
+            return;
+        }
+        const { udid, ws, secure, hostname, port, pathname, useProxy } = this.params;
+        const query = new URLSearchParams({
+            action: ACTION.STREAM_SCRCPY,
+            udid,
+            player: playerClass.playerCodeName,
+            ws,
+        });
+        const optional = { secure, hostname, port, pathname, useProxy, fitToScreen: fitToScreen || undefined };
+        Object.entries(optional).forEach(([key, value]) => {
+            if (value !== undefined) {
+                query.set(key, String(value));
+            }
+        });
+        history.replaceState(null, '', `#!${query.toString()}`);
+    }
+
     private openStream = (): void => {
         const videoSettings = this.buildVideoSettings();
         if (!videoSettings || !this.streamReceiver || !this.playerName) {
@@ -629,8 +651,10 @@ export class ConfigureScrcpy extends BaseClient<ParamsStreamScrcpy, ConfigureScr
             return;
         }
         this.setPreviouslyUsedPlayer(this.playerName);
-        // return;
-        player.setVideoSettings(videoSettings, fitToScreen, false);
+        // Remember the chosen settings and put the stream in the address bar, so a
+        // reload (or the automatic reconnect) comes back to the same stream and settings
+        player.setVideoSettings(videoSettings, fitToScreen, true);
+        this.replaceUrlWithStreamLink(fitToScreen);
         const params: ParamsStreamScrcpy = {
             ...this.params,
             udid: this.udid,
