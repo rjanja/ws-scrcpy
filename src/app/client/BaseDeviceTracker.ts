@@ -67,7 +67,13 @@ export abstract class BaseDeviceTracker<DD extends BaseDeviceDescriptor, TE exte
         const a = document.createElement('a');
         a.setAttribute('href', `${protocol}//${hostname}:${port}${pathname}${hash}`);
         a.setAttribute('rel', 'noopener noreferrer');
-        a.setAttribute('target', '_blank');
+        // A home screen web app would open new windows in the browser instead of the app
+        const standalone =
+            window.matchMedia('(display-mode: standalone)').matches ||
+            (navigator as Navigator & { standalone?: boolean }).standalone === true;
+        if (!standalone) {
+            a.setAttribute('target', '_blank');
+        }
         a.classList.add(`link-${q.action}`);
         a.innerText = text;
         return a;
