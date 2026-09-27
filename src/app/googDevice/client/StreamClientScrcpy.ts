@@ -63,6 +63,7 @@ export class StreamClientScrcpy
     private moreBox?: GoogMoreBox;
     private player?: BasePlayer;
     private filePushHandler?: FilePushHandler;
+    private fileInput?: HTMLInputElement;
     /// #if INCLUDE_FILE_LISTING
     private devicePushClient?: DevicePushClient;
     /// #endif
@@ -278,6 +279,29 @@ export class StreamClientScrcpy
         return new ScrcpyFilePushStream(this.streamReceiver);
     }
 
+    // A file picker works where drag and drop doesn't, e.g. on iOS it opens the
+    // photo library.
+    public chooseFilesToPush(): void {
+        if (!this.fileInput) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*,video/*';
+            input.multiple = true;
+            input.style.display = 'none';
+            input.addEventListener('change', () => {
+                const files = input.files ? Array.from(input.files) : [];
+                input.value = '';
+                if (files.length) {
+                    this.filePushHandler?.onFilesDrop(files);
+                }
+            });
+            // iOS won't fire `change` for an input that isn't in the document
+            document.body.appendChild(input);
+            this.fileInput = input;
+        }
+        this.fileInput.click();
+    }
+
     public onDisconnected = (): void => {
         this.streamReceiver.off('deviceMessage', this.OnDeviceMessage);
         this.streamReceiver.off('video', this.onVideo);
@@ -287,6 +311,8 @@ export class StreamClientScrcpy
 
         this.filePushHandler?.release();
         this.filePushHandler = undefined;
+        this.fileInput?.remove();
+        this.fileInput = undefined;
         /// #if INCLUDE_FILE_LISTING
         this.devicePushClient?.destroy();
         this.devicePushClient = undefined;

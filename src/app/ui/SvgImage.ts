@@ -1,6 +1,7 @@
 import KeyboardSVG from '../../public/images/skin-light/ic_keyboard_678_48dp.svg';
 import MoreSVG from '../../public/images/skin-light/ic_more_horiz_678_48dp.svg';
 import CameraSVG from '../../public/images/skin-light/ic_photo_camera_678_48dp.svg';
+import AddPhotoSVG from '../../public/images/skin-light/ic_add_photo_678_48dp.svg';
 import PowerSVG from '../../public/images/skin-light/ic_power_settings_new_678_48px.svg';
 import VolumeDownSVG from '../../public/images/skin-light/ic_volume_down_678_48px.svg';
 import VolumeUpSVG from '../../public/images/skin-light/ic_volume_up_678_48px.svg';
@@ -25,6 +26,7 @@ export enum Icon {
     VOLUME_DOWN,
     MORE,
     CAMERA,
+    ADD_PHOTO,
     KEYBOARD,
     CANCEL,
     OFFLINE,
@@ -46,6 +48,8 @@ export default class SvgImage {
                 return MoreSVG;
             case Icon.CAMERA:
                 return CameraSVG;
+            case Icon.ADD_PHOTO:
+                return AddPhotoSVG;
             case Icon.POWER:
                 return PowerSVG;
             case Icon.VOLUME_DOWN:

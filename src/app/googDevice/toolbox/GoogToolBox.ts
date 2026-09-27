@@ -89,6 +89,12 @@ export class GoogToolBox extends ToolBox {
             elements.push(screenshot);
         }
 
+        const upload = new ToolBoxButton('Upload photos', SvgImage.Icon.ADD_PHOTO);
+        upload.addEventListener('click', () => {
+            client.chooseFilesToPush();
+        });
+        elements.push(upload);
+
         const keyboard = new ToolBoxCheckbox(
             'Capture keyboard',
             SvgImage.Icon.KEYBOARD,
