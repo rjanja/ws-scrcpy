@@ -169,40 +169,17 @@ export abstract class BasePlayer extends TypedEmitter<PlayerEvents> {
         return frame && frame.length > 4 && (frame[4] & 31) === 5;
     }
 
-    private static getStorageKey(storageKeyPrefix: string, udid: string): string {
-        const { innerHeight, innerWidth } = window;
-        return `${storageKeyPrefix}:${udid}:${innerWidth}x${innerHeight}`;
-    }
-
-    private static getFullStorageKey(storageKeyPrefix: string, udid: string, displayInfo?: DisplayInfo): string {
-        const { innerHeight, innerWidth } = window;
-        let base = `${storageKeyPrefix}:${udid}:${innerWidth}x${innerHeight}`;
-        if (displayInfo) {
-            const { displayId, size } = displayInfo;
-            base = `${base}:${displayId}:${size.width}x${size.height}`;
-        }
-        return base;
+    // Settings are kept per device and display. The key used to include the
+    // browser window size and the display size, but the stream page looks the
+    // settings up before it knows the display size, and any window resize or
+    // rotation changed the key, so saved settings were never found again.
+    private static getStorageKey(storageKeyPrefix: string, udid: string, displayInfo?: DisplayInfo): string {
+        const displayId = displayInfo ? displayInfo.displayId : DisplayInfo.DEFAULT_DISPLAY;
+        return `${storageKeyPrefix}:${udid}:display:${displayId}`;
     }
 
     public static getFromStorageCompat(prefix: string, udid: string, displayInfo?: DisplayInfo): string | null {
-        const shortKey = this.getStorageKey(prefix, udid);
-        const savedInShort = window.localStorage.getItem(shortKey);
-        if (!displayInfo) {
-            return savedInShort;
-        }
-        const isDefaultDisplay = displayInfo.displayId === DisplayInfo.DEFAULT_DISPLAY;
-        const fullKey = this.getFullStorageKey(prefix, udid, displayInfo);
-        const savedInFull = window.localStorage.getItem(fullKey);
-        if (savedInFull) {
-            if (savedInShort && isDefaultDisplay) {
-                window.localStorage.removeItem(shortKey);
-            }
-            return savedInFull;
-        }
-        if (isDefaultDisplay) {
-            return savedInShort;
-        }
-        return null;
+        return window.localStorage.getItem(this.getStorageKey(prefix, udid, displayInfo));
     }
 
     public static getFitToScreenFromStorage(
@@ -214,7 +191,7 @@ export abstract class BasePlayer extends TypedEmitter<PlayerEvents> {
             return false;
         }
         let parsedValue = false;
-        const key = `${this.getFullStorageKey(storageKeyPrefix, udid, displayInfo)}:fit`;
+        const key = `${this.getStorageKey(storageKeyPrefix, udid, displayInfo)}:fit`;
         const saved = window.localStorage.getItem(key);
         if (!saved) {
             return false;
@@ -289,7 +266,7 @@ export abstract class BasePlayer extends TypedEmitter<PlayerEvents> {
         if (!window.localStorage) {
             return;
         }
-        const key = this.getFullStorageKey(storageKeyPrefix, udid, displayInfo);
+        const key = this.getStorageKey(storageKeyPrefix, udid, displayInfo);
         window.localStorage.setItem(key, JSON.stringify(videoSettings));
         const fitKey = `${key}:fit`;
         window.localStorage.setItem(fitKey, JSON.stringify(fitToScreen));
