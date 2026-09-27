@@ -3,13 +3,17 @@ import { CommandControlMessage, FilePushState } from '../../controlMessage/Comma
 import { Multiplexer } from '../../../packages/multiplexer/Multiplexer';
 import { FilePushResponseStatus } from './FilePushResponseStatus';
 import Protocol from '@dead50f7/adbkit/lib/adb/protocol';
-import { FileListingClient } from '../client/FileListingClient';
 import * as path from 'path';
 import FilePushHandler from './FilePushHandler';
 
+export interface PushTargetResolver {
+    // Directory on the device where `fileName` should be pushed
+    getPath(fileName: string): string;
+}
+
 export class AdbkitFilePushStream extends FilePushStream {
     private channels: Map<number, Multiplexer> = new Map();
-    constructor(private readonly socket: Multiplexer, private readonly fileListingClient: FileListingClient) {
+    constructor(private readonly socket: Multiplexer, private readonly target: PushTargetResolver) {
         super();
     }
     public hasConnection(): boolean {
@@ -85,7 +89,7 @@ export class AdbkitFilePushStream extends FilePushStream {
     }
 
     public sendEventStart({ id, fileName, fileSize }: { id: number; fileName: string; fileSize: number }): void {
-        const filePath = path.join(this.fileListingClient.getPath(), fileName);
+        const filePath = path.join(this.target.getPath(fileName), fileName);
         const startParams = { id, fileName: filePath, fileSize, state: FilePushState.START };
         const channel = this.getChannel(id);
         if (!channel) {

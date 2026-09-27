@@ -30,6 +30,11 @@ import { ACTION } from '../../../common/Action';
 import { StreamReceiverScrcpy } from './StreamReceiverScrcpy';
 import { ParamsDeviceTracker } from '../../../types/ParamsDeviceTracker';
 import { ScrcpyFilePushStream } from '../filePush/ScrcpyFilePushStream';
+import { FilePushStream } from '../filePush/FilePushStream';
+/// #if INCLUDE_FILE_LISTING
+import { AdbkitFilePushStream } from '../filePush/AdbkitFilePushStream';
+import { DevicePushClient } from './DevicePushClient';
+/// #endif
 
 type StartParams = {
     udid: string;
@@ -58,6 +63,9 @@ export class StreamClientScrcpy
     private moreBox?: GoogMoreBox;
     private player?: BasePlayer;
     private filePushHandler?: FilePushHandler;
+    /// #if INCLUDE_FILE_LISTING
+    private devicePushClient?: DevicePushClient;
+    /// #endif
     private fitToScreen?: boolean;
     private readonly streamReceiver: StreamReceiverScrcpy;
 
@@ -256,6 +264,20 @@ export class StreamClientScrcpy
         }
     };
 
+    // Push dropped files with adb when the file listing backend is available, so
+    // photos land in shared storage and get registered with the gallery. Falls
+    // back to the scrcpy push (APK only, /data/local/tmp) otherwise.
+    private createFilePushStream(udid: string): FilePushStream {
+        /// #if INCLUDE_FILE_LISTING
+        this.devicePushClient = new DevicePushClient(this.params, udid);
+        const socket = this.devicePushClient.getSocket();
+        if (socket) {
+            return new AdbkitFilePushStream(socket, this.devicePushClient);
+        }
+        /// #endif
+        return new ScrcpyFilePushStream(this.streamReceiver);
+    }
+
     public onDisconnected = (): void => {
         this.streamReceiver.off('deviceMessage', this.OnDeviceMessage);
         this.streamReceiver.off('video', this.onVideo);
@@ -265,6 +287,10 @@ export class StreamClientScrcpy
 
         this.filePushHandler?.release();
         this.filePushHandler = undefined;
+        /// #if INCLUDE_FILE_LISTING
+        this.devicePushClient?.destroy();
+        this.devicePushClient = undefined;
+        /// #endif
         this.touchHandler?.release();
         this.touchHandler = undefined;
         window.removeEventListener('resize', this.onWindowResize);
@@ -350,7 +376,7 @@ export class StreamClientScrcpy
         this.applyNewVideoSettings(videoSettings, false);
         const element = player.getTouchableElement();
         const logger = new DragAndPushLogger(element);
-        this.filePushHandler = new FilePushHandler(element, new ScrcpyFilePushStream(this.streamReceiver));
+        this.filePushHandler = new FilePushHandler(element, this.createFilePushStream(udid));
         this.filePushHandler.addEventListener(logger);
 
         const streamReceiver = this.streamReceiver;

@@ -4,6 +4,8 @@ import { FilePushResponseStatus } from '../../../app/googDevice/filePush/FilePus
 import PushTransfer from '@dead50f7/adbkit/lib/adb/sync/pushtransfer';
 import { ReadStream } from './ReadStream';
 import { AdbExtended } from '../adb';
+import { AdbUtils } from '../AdbUtils';
+import { MediaFile } from '../../../common/MediaFile';
 
 enum State {
     INITIAL,
@@ -146,9 +148,11 @@ export class FilePushReader {
                 }
                 this.state = State.FINISH;
                 if (this.readStream) {
+                    // Only signal EOF here. Destroying the stream right away can suppress its
+                    // 'end' event, so adb never sends DONE, the file is never finalized (stays
+                    // pending in MediaStore) and the client waits forever. `release()` cleans up
+                    // once the transfer has ended.
                     this.readStream.push(null);
-                    this.readStream.close();
-                    this.readStream = undefined;
                 }
                 break;
             case FilePushState.CANCEL:
@@ -212,6 +216,9 @@ export class FilePushReader {
     private onPushEnd = () => {
         if (this.state === State.FINISH) {
             this.sendResponse(FilePushResponseStatus.NO_ERROR);
+            if (MediaFile.needsMediaScan(this.fileName)) {
+                AdbUtils.scheduleMediaScan(this.serial);
+            }
             this.release();
         } else {
             this.closeWithError(FilePushResponseStatus.ERROR_INVALID_STATE);

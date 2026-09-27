@@ -153,6 +153,32 @@ export class AdbUtils {
         return port;
     }
 
+    private static mediaScanTimers: Map<string, NodeJS.Timeout> = new Map();
+
+    // Files pushed over adb are not added to MediaStore, so galleries and photo
+    // pickers don't see them. Debounced so a batch of files triggers one scan.
+    public static scheduleMediaScan(serial: string, delayMs = 1500): void {
+        const existing = this.mediaScanTimers.get(serial);
+        if (existing) {
+            clearTimeout(existing);
+        }
+        const timer = setTimeout(() => {
+            this.mediaScanTimers.delete(serial);
+            this.runMediaScan(serial).catch((error: Error) => {
+                console.error(`Media scan failed (${serial}):`, error.message);
+            });
+        }, delayMs);
+        this.mediaScanTimers.set(serial, timer);
+    }
+
+    private static async runMediaScan(serial: string): Promise<void> {
+        const client = AdbExtended.createClient();
+        const cmd = 'content call --method scan_volume --uri content://media --arg external_primary';
+        const stream = await client.shell(serial, cmd);
+        const output = (await AdbExtended.util.readAll(stream)).toString().trim();
+        console.log(`Media scan (${serial}): ${output}`);
+    }
+
     public static async getDevtoolsRemoteList(serial: string): Promise<string[]> {
         const client = AdbExtended.createClient();
         const stream = await client.shell(serial, 'cat /proc/net/unix');
