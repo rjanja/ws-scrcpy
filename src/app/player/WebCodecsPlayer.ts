@@ -27,7 +27,7 @@ export class WebCodecsPlayer extends BaseCanvasBasedPlayer {
         bitrate: 8388608,
         maxFps: 30,
         iFrameInterval: 2,
-        bounds: new Size(1080, 2220),
+        bounds: new Size(1080, 2400),
         sendFrameMeta: false,
     });
 
