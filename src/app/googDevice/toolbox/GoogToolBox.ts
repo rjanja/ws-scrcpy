@@ -7,6 +7,7 @@ import { ToolBoxElement } from '../../toolbox/ToolBoxElement';
 import { ToolBoxCheckbox } from '../../toolbox/ToolBoxCheckbox';
 import { StreamClientScrcpy } from '../client/StreamClientScrcpy';
 import { BasePlayer } from '../../player/BasePlayer';
+import { AudioState, AudioStreamPlayer } from '../../audio/AudioStreamPlayer';
 
 const BUTTONS = [
     {
@@ -87,6 +88,28 @@ export class GoogToolBox extends ToolBox {
                 player.createScreenshot(client.getDeviceName());
             });
             elements.push(screenshot);
+        }
+
+        if (AudioStreamPlayer.isSupported()) {
+            const audio = new ToolBoxCheckbox('Audio', SvgImage.Icon.HEADSET, `audio_${udid}_${playerName}`);
+            const input = audio.getElement();
+            input.checked = client.isAudioEnabled();
+            audio.addEventListener('click', (_, el) => {
+                client.setAudioEnabled(el.getElement().checked);
+            });
+            const titles: Record<AudioState, string> = {
+                off: 'Audio',
+                'waiting-for-gesture': 'Audio (tap anywhere to start)',
+                playing: 'Audio',
+                unavailable: 'Audio (not available on this device)',
+                unsupported: 'Audio (not supported by this browser)',
+            };
+            client.setAudioStateListener((state) => {
+                audio.getAllElements().forEach((element) => {
+                    element.title = titles[state];
+                });
+            });
+            elements.push(audio);
         }
 
         const upload = new ToolBoxButton('Upload photos', SvgImage.Icon.ADD_PHOTO);

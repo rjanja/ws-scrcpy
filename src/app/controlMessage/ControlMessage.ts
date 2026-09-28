@@ -17,6 +17,7 @@ export class ControlMessage {
     public static TYPE_ROTATE_DEVICE = 11;
     public static TYPE_CHANGE_STREAM_PARAMETERS = 101;
     public static TYPE_PUSH_FILE = 102;
+    public static TYPE_SET_AUDIO_ENABLED = 103;
 
     constructor(readonly type: number) {}
 

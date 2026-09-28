@@ -62,6 +62,15 @@ export class CommandControlMessage extends ControlMessage {
         return event;
     }
 
+    public static createSetAudioEnabledCommand(enabled: boolean): CommandControlMessage {
+        const event = new CommandControlMessage(ControlMessage.TYPE_SET_AUDIO_ENABLED);
+        const buffer = Buffer.alloc(2);
+        buffer.writeUInt8(event.type, 0);
+        buffer.writeUInt8(enabled ? 1 : 0, 1);
+        event.buffer = buffer;
+        return event;
+    }
+
     public static createSetScreenPowerModeCommand(mode: boolean): CommandControlMessage {
         const event = new CommandControlMessage(ControlMessage.TYPE_SET_SCREEN_POWER_MODE);
         let offset = 0;

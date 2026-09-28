@@ -31,6 +31,7 @@ import { StreamReceiverScrcpy } from './StreamReceiverScrcpy';
 import { ParamsDeviceTracker } from '../../../types/ParamsDeviceTracker';
 import { ScrcpyFilePushStream } from '../filePush/ScrcpyFilePushStream';
 import { StreamReconnector } from './StreamReconnector';
+import { AudioState, AudioStreamPlayer } from '../../audio/AudioStreamPlayer';
 import { FilePushStream } from '../filePush/FilePushStream';
 /// #if INCLUDE_FILE_LISTING
 import { AdbkitFilePushStream } from '../filePush/AdbkitFilePushStream';
@@ -66,6 +67,9 @@ export class StreamClientScrcpy
     private filePushHandler?: FilePushHandler;
     private fileInput?: HTMLInputElement;
     private reconnector?: StreamReconnector;
+    private audioPlayer?: AudioStreamPlayer;
+    private audioStateListener?: (state: AudioState) => void;
+    private static readonly AUDIO_STORAGE_KEY = 'ws-scrcpy:audio-enabled';
     /// #if INCLUDE_FILE_LISTING
     private devicePushClient?: DevicePushClient;
     /// #endif
@@ -305,6 +309,48 @@ export class StreamClientScrcpy
         this.fileInput.click();
     }
 
+    // Audio preference is remembered per browser, so a reload (or the automatic reconnect) resumes it
+    public isAudioEnabled(): boolean {
+        try {
+            return window.localStorage.getItem(StreamClientScrcpy.AUDIO_STORAGE_KEY) === '1';
+        } catch (error) {
+            return false;
+        }
+    }
+
+    public setAudioEnabled(enabled: boolean): void {
+        try {
+            window.localStorage.setItem(StreamClientScrcpy.AUDIO_STORAGE_KEY, enabled ? '1' : '0');
+        } catch (error) {
+            // storage unavailable: the choice just won't be remembered
+        }
+        if (enabled) {
+            if (!this.audioPlayer) {
+                const player = new AudioStreamPlayer();
+                player.on('state', (state) => this.audioStateListener?.(state));
+                this.audioPlayer = player;
+            }
+            this.audioPlayer.enable();
+        } else {
+            this.audioPlayer?.disable();
+        }
+        this.sendMessage(CommandControlMessage.createSetAudioEnabledCommand(enabled));
+    }
+
+    public setAudioStateListener(listener: (state: AudioState) => void): void {
+        this.audioStateListener = listener;
+    }
+
+    public onAudio = (data: Uint8Array): void => {
+        this.audioPlayer?.handleMessage(data);
+    };
+
+    private releaseAudio(): void {
+        this.streamReceiver.off('audio', this.onAudio);
+        this.audioPlayer?.release();
+        this.audioPlayer = undefined;
+    }
+
     public onDisconnected = (): void => {
         this.streamReceiver.off('deviceMessage', this.OnDeviceMessage);
         this.streamReceiver.off('video', this.onVideo);
@@ -312,6 +358,7 @@ export class StreamClientScrcpy
         this.streamReceiver.off('displayInfo', this.onDisplayInfo);
         this.streamReceiver.off('disconnected', this.onDisconnected);
         this.reconnector?.onDisconnected();
+        this.releaseAudio();
 
         this.filePushHandler?.release();
         this.filePushHandler = undefined;
@@ -380,6 +427,7 @@ export class StreamClientScrcpy
             }
             this.reconnector?.release();
             this.reconnector = undefined;
+            this.releaseAudio();
             this.streamReceiver.stop();
             if (this.player) {
                 this.player.stop();
@@ -417,6 +465,10 @@ export class StreamClientScrcpy
         const streamReceiver = this.streamReceiver;
         streamReceiver.on('deviceMessage', this.OnDeviceMessage);
         streamReceiver.on('video', this.onVideo);
+        streamReceiver.on('audio', this.onAudio);
+        if (AudioStreamPlayer.isSupported() && this.isAudioEnabled()) {
+            this.setAudioEnabled(true);
+        }
         streamReceiver.on('clientsStats', this.onClientsStats);
         streamReceiver.on('displayInfo', this.onDisplayInfo);
         streamReceiver.on('disconnected', this.onDisconnected);

@@ -6,6 +6,7 @@ import ScreenInfo from '../ScreenInfo';
 import Util from '../Util';
 import { DisplayInfo } from '../DisplayInfo';
 import { ParamsStream } from '../../types/ParamsStream';
+import { AudioStreamPlayer } from '../audio/AudioStreamPlayer';
 
 const DEVICE_NAME_FIELD_LENGTH = 64;
 const MAGIC_BYTES_INITIAL = Util.stringToUtf8ByteArray('scrcpy_initial');
@@ -24,6 +25,7 @@ export type DisplayCombinedInfo = {
 
 interface StreamReceiverEvents {
     video: ArrayBuffer;
+    audio: Uint8Array;
     deviceMessage: DeviceMessage;
     displayInfo: DisplayCombinedInfo[];
     clientsStats: ClientsStats;
@@ -141,6 +143,10 @@ export class StreamReceiver<P extends ParamsStream> extends ManagerClient<Params
                 if (StreamReceiver.EqualArrays(magicBytes, DeviceMessage.MAGIC_BYTES_MESSAGE)) {
                     const message = DeviceMessage.fromBuffer(event.data);
                     this.emit('deviceMessage', message);
+                    return;
+                }
+                if (StreamReceiver.EqualArrays(magicBytes, AudioStreamPlayer.MAGIC_BYTES)) {
+                    this.emit('audio', new Uint8Array(event.data));
                     return;
                 }
             }
