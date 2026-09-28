@@ -1,3 +1,4 @@
 {
-  "INCLUDE_ADB_SHELL": false
+  "INCLUDE_ADB_SHELL": false,
+  "SCRCPY_LISTENS_ON_ALL_INTERFACES": false
 }

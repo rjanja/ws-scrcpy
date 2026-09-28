@@ -1,6 +1,7 @@
 export const SERVER_PACKAGE = 'com.genymobile.scrcpy.Server';
 export const SERVER_PORT = 8886;
-export const SERVER_VERSION = '1.19-ws8';
+// Built from https://github.com/rjanja/scrcpy (branch ws-scrcpy), see vendor/Genymobile/scrcpy/SOURCE.md
+export const SERVER_VERSION = '4.1-ws1';
 
 export const SERVER_TYPE = 'web';
 
