@@ -3,6 +3,8 @@ import MoreSVG from '../../public/images/skin-light/ic_more_horiz_678_48dp.svg';
 import CameraSVG from '../../public/images/skin-light/ic_photo_camera_678_48dp.svg';
 import AddPhotoSVG from '../../public/images/skin-light/ic_add_photo_678_48dp.svg';
 import HeadsetSVG from '../../public/images/skin-light/ic_headset_678_48dp.svg';
+import FullscreenSVG from '../../public/images/skin-light/ic_fullscreen_678_48dp.svg';
+import FullscreenExitSVG from '../../public/images/skin-light/ic_fullscreen_exit_678_48dp.svg';
 import PowerSVG from '../../public/images/skin-light/ic_power_settings_new_678_48px.svg';
 import VolumeDownSVG from '../../public/images/skin-light/ic_volume_down_678_48px.svg';
 import VolumeUpSVG from '../../public/images/skin-light/ic_volume_up_678_48px.svg';
@@ -29,6 +31,8 @@ export enum Icon {
     CAMERA,
     ADD_PHOTO,
     HEADSET,
+    FULLSCREEN,
+    FULLSCREEN_EXIT,
     KEYBOARD,
     CANCEL,
     OFFLINE,
@@ -54,6 +58,10 @@ export default class SvgImage {
                 return AddPhotoSVG;
             case Icon.HEADSET:
                 return HeadsetSVG;
+            case Icon.FULLSCREEN:
+                return FullscreenSVG;
+            case Icon.FULLSCREEN_EXIT:
+                return FullscreenExitSVG;
             case Icon.POWER:
                 return PowerSVG;
             case Icon.VOLUME_DOWN:

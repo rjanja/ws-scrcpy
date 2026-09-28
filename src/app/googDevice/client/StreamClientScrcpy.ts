@@ -31,6 +31,7 @@ import { StreamReceiverScrcpy } from './StreamReceiverScrcpy';
 import { ParamsDeviceTracker } from '../../../types/ParamsDeviceTracker';
 import { ScrcpyFilePushStream } from '../filePush/ScrcpyFilePushStream';
 import { StreamReconnector } from './StreamReconnector';
+import SvgImage from '../../ui/SvgImage';
 import { AudioState, AudioStreamPlayer } from '../../audio/AudioStreamPlayer';
 import { FilePushStream } from '../filePush/FilePushStream';
 /// #if INCLUDE_FILE_LISTING
@@ -66,6 +67,7 @@ export class StreamClientScrcpy
     private player?: BasePlayer;
     private filePushHandler?: FilePushHandler;
     private fileInput?: HTMLInputElement;
+    private exitImmersiveButton?: HTMLButtonElement;
     private reconnector?: StreamReconnector;
     private audioPlayer?: AudioStreamPlayer;
     private audioStateListener?: (state: AudioState) => void;
@@ -309,6 +311,79 @@ export class StreamClientScrcpy
         this.fileInput.click();
     }
 
+    // Immersive mode: the video uses the whole page (toolbar and panel hidden). Where the browser allows it (desktop, Android, iPad),
+    // the page also goes full screen; iPhone Safari only allows <video> elements to, so there it is a layout change only (open the
+    // page from a Home Screen icon to also hide Safari's bars).
+    public setImmersive(immersive: boolean): void {
+        const body = document.body;
+        if (immersive === body.classList.contains('immersive')) {
+            return;
+        }
+        if (immersive) {
+            body.classList.add('immersive');
+            const button = document.createElement('button');
+            button.className = 'exit-immersive';
+            button.title = 'Exit full screen';
+            button.appendChild(SvgImage.create(SvgImage.Icon.FULLSCREEN_EXIT));
+            button.addEventListener('click', () => this.setImmersive(false));
+            body.appendChild(button);
+            this.exitImmersiveButton = button;
+            StreamClientScrcpy.requestFullscreen();
+            document.addEventListener('fullscreenchange', this.onFullscreenChange);
+            document.addEventListener('webkitfullscreenchange', this.onFullscreenChange);
+        } else {
+            body.classList.remove('immersive');
+            this.exitImmersiveButton?.remove();
+            this.exitImmersiveButton = undefined;
+            document.removeEventListener('fullscreenchange', this.onFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', this.onFullscreenChange);
+            StreamClientScrcpy.exitFullscreen();
+        }
+        // The video area changed size without a window resize
+        this.onWindowResize();
+    }
+
+    private static getFullscreenElement(): Element | null {
+        const doc = document as Document & { webkitFullscreenElement?: Element | null };
+        return document.fullscreenElement || doc.webkitFullscreenElement || null;
+    }
+
+    private static requestFullscreen(): void {
+        const element = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => void };
+        try {
+            if (element.requestFullscreen) {
+                element.requestFullscreen().catch(() => {
+                    // not allowed (e.g. iPhone): immersive layout only
+                });
+            } else if (element.webkitRequestFullscreen) {
+                element.webkitRequestFullscreen();
+            }
+        } catch (error) {
+            // not supported: immersive layout only
+        }
+    }
+
+    private static exitFullscreen(): void {
+        if (!StreamClientScrcpy.getFullscreenElement()) {
+            return;
+        }
+        const doc = document as Document & { webkitExitFullscreen?: () => void };
+        if (document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {
+                // ignore
+            });
+        } else if (doc.webkitExitFullscreen) {
+            doc.webkitExitFullscreen();
+        }
+    }
+
+    private onFullscreenChange = (): void => {
+        // Leaving full screen with the browser's own controls (Esc, back gesture) also leaves immersive mode
+        if (!StreamClientScrcpy.getFullscreenElement()) {
+            this.setImmersive(false);
+        }
+    };
+
     // Audio preference is remembered per browser, so a reload (or the automatic reconnect) resumes it
     public isAudioEnabled(): boolean {
         try {
@@ -428,6 +503,7 @@ export class StreamClientScrcpy
             this.reconnector?.release();
             this.reconnector = undefined;
             this.releaseAudio();
+            this.setImmersive(false);
             this.streamReceiver.stop();
             if (this.player) {
                 this.player.stop();

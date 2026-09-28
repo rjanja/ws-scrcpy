@@ -214,3 +214,34 @@ body.stream {
     color: #ffffff;
     font-size: 1.2rem;
 }
+
+/* Immersive mode: the video takes the whole page */
+body.immersive .control-buttons-list,
+body.immersive .more-box {
+    display: none !important;
+}
+
+.exit-immersive {
+    position: fixed;
+    top: max(8px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
+    z-index: 20;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0.25rem;
+    border: none;
+    border-radius: 50%;
+    background-color: hsla(0, 0%, 0%, 0.45);
+    --svg-button-fill: #ffffff;
+    opacity: 0.5;
+}
+
+.exit-immersive:hover,
+.exit-immersive:focus-visible {
+    opacity: 1;
+}
+
+.exit-immersive > svg {
+    width: 100%;
+    height: 100%;
+}

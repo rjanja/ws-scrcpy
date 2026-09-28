@@ -112,6 +112,12 @@ export class GoogToolBox extends ToolBox {
             elements.push(audio);
         }
 
+        const fullscreen = new ToolBoxButton('Full screen', SvgImage.Icon.FULLSCREEN);
+        fullscreen.addEventListener('click', () => {
+            client.setImmersive(true);
+        });
+        elements.push(fullscreen);
+
         const upload = new ToolBoxButton('Upload photos', SvgImage.Icon.ADD_PHOTO);
         upload.addEventListener('click', () => {
             client.chooseFilesToPush();
